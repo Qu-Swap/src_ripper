@@ -1,6 +1,9 @@
 import re
+from bs4 import BeautifulSoup as soup
+import scraper
 
-indexes = {0: "Short", 2: "Name", 6: "Books"}
+indexes = {0: "Short", 2: "Name", 6: "Link"}
+numColumns = 11
 
 
 def check_duplicate(course, courses):
@@ -17,10 +20,10 @@ def retrieve_info(html, index):
     elif index == 2:
         return re.split("[<>]", html)[2]
     elif index == 6:
-        if "HREF" in html:
-            return re.split("\"", html)[1].replace(" ", "%20")
+        if "href" in html:
+            return re.split("\"", html)[1].replace(" ", "%20").replace("&amp;", "&")
         else:
-            return
+            return None
 
 
 def get_subjects(filename):
@@ -36,34 +39,41 @@ def get_subjects(filename):
 
 def get_courses(filename, subjects):
     courses = []
-    page = open(filename, "rb")
+    page = soup(open(filename), "html.parser")
 
-    flag = False
-    index = 0
-    course = {}
-    for line in page:
-        line = line.decode("utf-8", "ignore").rstrip()
+    # There's no identification for the course table so this is the only way
+    table = page.findAll("table")[8]
 
-        # Stupid breakpoints because the formatting of the course guide sucks
-        if line == "<TD class='x2'>":
-            flag = True
-        elif flag and "</TD>" in line:
-            if index in indexes:
-                course[indexes[index]] = retrieve_info(line[:-5], index)
+    rows = table.findAll("tr")[3:]
+    for row in rows:
+        tds = row.findAll("td")
+        if len(tds) == numColumns:
+            course = {}
+            for index in indexes:
+                inner = tds[index].decode_contents().replace("\n", "")
+                course[indexes[index]] = retrieve_info(inner, index)
 
-            index += 1
-        elif flag and "</TR>" in line:
-            flag = False
-            index = 0
+            course["Subject"] = subjects[course["Short"].split()[0]]
 
             if check_duplicate(course, courses):
-                course["Subject"] = subjects[course["Short"].split(' ')[0]]
                 courses.append(course)
-            course = {}
-        elif "<b>Cultural Perspectives" in line:
-            break
+        else:
+            continue
 
     return courses
+
+
+def get_books(courses):
+    for i in range(len(courses)):
+        course = courses[i]
+
+        if course["Link"] is not None:
+            course["Books"] = scraper.get_books(course["Link"])
+        else:
+            course["Books"] = None
+
+        if i % 20 == 0:
+            print(str(i) + "/" + str(len(courses)))
 
 
 def main():
@@ -72,8 +82,8 @@ def main():
 
     subjects = get_subjects(subjects)
     courses = get_courses(courses, subjects)
+    get_books(courses)
 
-    print(subjects)
     for course in courses:
         print(course)
 

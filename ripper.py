@@ -1,6 +1,7 @@
 import re
 from bs4 import BeautifulSoup as soup
 import scraper
+import json
 
 indexes = {0: "Short", 2: "Name", 6: "Link"}
 numColumns = 11
@@ -76,6 +77,11 @@ def get_books(courses):
             print(str(i) + "/" + str(len(courses)))
 
 
+def write_json(filename, courses):
+    with open(filename, "w") as write_file:
+        json.dump(courses, write_file)
+
+
 def main():
     courses = "Spring2019CourseGuide.html"
     subjects = "subjectPrefix.csv"
@@ -86,6 +92,8 @@ def main():
 
     for course in courses:
         print(course)
+
+    write_json("courses.json", courses)
 
 
 if __name__ == "__main__":

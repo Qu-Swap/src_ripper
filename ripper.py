@@ -17,7 +17,8 @@ def check_duplicate(course, courses):
 
 def retrieve_info(html, index):
     if index == 0:
-        return html
+        tokens = html.split()
+        return tokens[0] + " " + tokens[1]
     elif index == 2:
         return re.split("[<>]", html)[2]
     elif index == 6:
@@ -38,9 +39,9 @@ def get_subjects(filename):
     return subjects
 
 
-def get_courses(filename, subjects):
+def get_courses(link, subjects):
     courses = []
-    page = soup(open(filename), "html.parser")
+    page = soup(scraper.simple_get(link), "html.parser")
 
     # There's no identification for the course table so this is the only way
     table = page.findAll("table")[8]
@@ -83,11 +84,11 @@ def write_json(filename, courses):
 
 
 def main():
-    courses = "Spring2019CourseGuide.html"
-    subjects = "subjectPrefix.csv"
+    courselink = "http://wilbur.simons-rock.edu/cg/Spring2019CourseGuide.php"
+    subjects = "data/subjectPrefix.csv"
 
     subjects = get_subjects(subjects)
-    courses = get_courses(courses, subjects)
+    courses = get_courses(courselink, subjects)
     get_books(courses)
 
     for course in courses:
